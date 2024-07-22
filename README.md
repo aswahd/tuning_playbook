@@ -14,7 +14,7 @@
 -   [Who is this document for?](#who-is-this-document-for)
 -   [Why a tuning playbook?](#why-a-tuning-playbook)
 -   [Guide for starting a new project](#guide-for-starting-a-new-project)
-    -   [Choosing the model architecture](#choosing-a-model-architecture)
+    -   [Choosing the model architecture](#choosing-the-model-architecture)
     -   [Choosing the optimizer](#choosing-the-optimizer)
     -   [Choosing the batch size](#choosing-the-batch-size)
     -   [Choosing the initial configuration](#choosing-the-initial-configuration)
@@ -32,7 +32,7 @@
     -   [Deciding how long to train when training is compute-bound](#Deciding-how-long-to-train-when-training-is-compute-bound)
 -   [Additional guidance for the training pipeline](#Additional-guidance-for-the-training-pipeline)
     -   [Optimizing the input pipeline](#Optimizing-the-input-pipeline)
-    -   [Evaluating model performance](Evaluating-model-performance)
+    -   [Evaluating model performance](#evaluating-model-performance)
     -   [Saving checkpoints and retrospectively selecting the best checkpoint](#Saving-checkpoints-and-retrospectively-selecting-the-best-checkpoint)
     -   [Setting up experiment tracking](#Setting-up-experiment-tracking)
     -   [Batch normalization implementation details](#Batch-normalization-implementation-details)
@@ -529,7 +529,7 @@ towards the goal.*
         preprocessing choice, etc.).
     -   Understand the impact of a particular model hyperparameter (e.g. the
         activation function)
-    -   Greedily maximize validation error.
+    -   Greedily minimize validation error.
 
 ### Designing the next round of experiments
 
@@ -859,8 +859,8 @@ if issues are discovered, revise the experiments and rerun them.*
         value it achieved over the course of training.
 
 <p align="center" id="figure-1">
-<img src="assets/bad_search_space.png" width="49%" alt="Example of bad search space boundaries">
-<img src="assets/good_search_space.png" width="49%" alt="Example of good search space boundaries">
+    <img src="https://raw.githubusercontent.com/google-research/tuning_playbook/main/assets/bad_search_space.png" width="49%" alt="Example of bad search space boundaries">
+<img src="https://raw.githubusercontent.com/google-research/tuning_playbook/main/assets/good_search_space.png" width="49%" alt="Example of good search space boundaries">
 </p>
 
 <p align="center"><b>Figure 1:</b> Examples of bad search space boundaries and acceptable search space boundaries.</p>
@@ -1001,7 +1001,7 @@ failure modes and can help us prioritize what actions to take next.*
 
 
 <p align="center" id="figure-2">
-<img src="assets/isolation_plot.png" width="49%" alt="Isolation plot that investigates the best value of weight decay for ResNet-50
+<img src="https://raw.githubusercontent.com/google-research/tuning_playbook/main/assets/isolation_plot.png" width="49%" alt="Isolation plot that investigates the best value of weight decay for ResNet-50
 trained on ImageNet.">
 </p>
 
@@ -1011,7 +1011,7 @@ trained on ImageNet.">
     scientific hyperparameter.
     -   For example, we may want to determine the value of weight decay that
         results in the best validation error.
--   An **isolation plot** is a special case of the basic hyper-parameter axis
+-   An **isolation plot** is a special case of the basic hyperparameter axis
     plot. Each point on an isolation plot corresponds to the performance of the
     *best* trial across some (or all) of the nuisance hyperparameters.
     -   In other words, we plot the model performance after "optimizing away"
@@ -1128,12 +1128,16 @@ should be tuned at all.*
     [the advantages of quasi-random search](#why-use-quasi-random-search-instead-of-more-sophisticated-black-box-optimization-algorithms-during-the-exploration-phase-of-tuning)
     no longer apply and Bayesian optimization tools should be used to
     automatically find the best hyperparameter configuration.
+    -   [Open-Source Vizier](https://github.com/google/vizier) implements
+        a variety of sophisticated algorithms for tuning ML models, including
+        Bayesian Optimization algorithms.
     -   If the search space contains a non-trivial volume of divergent points
         (points that get NaN training loss or even training loss many standard
         deviations worse than the mean), it is important to use black box
         optimization tools that properly handle trials that diverge (see
         [Bayesian Optimization with Unknown Constraints](https://arxiv.org/abs/1403.5607)
-        for an excellent way to deal with this issue).
+        for an excellent way to deal with this issue). [Open-Source Vizier](https://github.com/google/vizier)
+        has support for divergent points by marking trials as infeasible, although it may not use our preferred approach from [Gelbart et al.](https://arxiv.org/abs/1403.5607), depending on how it is configured.
 -   At this point, we should also consider checking the performance on the test
     set.
     -   In principle, we could even fold the validation set into the training
@@ -1455,7 +1459,7 @@ evaluations at regular step intervals, not regular time intervals.*
     shuffled. Evaluating at regular step intervals can make these issues easier
     to catch.
 -   Partial batches can occur when the evaluation sets are not divisible by the
-    batch size. Ensure that the padded examples are correctly weighed to prevent
+    batch size. Ensure that the padded examples are correctly weighted to prevent
     the loss function from being biased by them. Often, these padded examples
     can be given a weight of zero.
 -   Save sufficient information per evaluation to support offline analysis.
@@ -1615,7 +1619,7 @@ multi-host training can make it very easy to introduce bugs!*
 
 -   It’s not uncommon to see papers with complicated piecewise learning rate
     (LR) decay schedules.
--   Readers often wonder how the authors arrived at such a complicated study.
+-   Readers often wonder how the authors arrived at such a complicated schedule.
 -   Many complicated LR decay schedules are the result of tuning the schedule as
     a function of the validation set performance in an ad hoc way:
     1.  Start a single training run with some simple LR decay (or a constant
@@ -1750,9 +1754,11 @@ multi-host training can make it very easy to introduce bugs!*
 <details><summary><em>[Click to expand]</em></summary>
 <br>
 
--   We use
-    [this implementation](https://github.com/mlcommons/algorithmic-efficiency/blob/main/algorithmic_efficiency/halton.py)
-    that generates a Halton sequence for a given search space (intended to
+-   [Open-Source Vizier](https://github.com/google/vizier) has an [implementation
+    of quasi-random search](https://github.com/google/vizier/blob/main/vizier/_src/algorithms/designers/quasi_random.py). Set `algorithm="QUASI_RANDOM_SEARCH"` in [this usage example](https://oss-vizier.readthedocs.io/en/latest/guides/user/running_vizier.html).
+-   An alternative implementation exists
+    [here](https://github.com/mlcommons/algorithmic-efficiency/blob/main/algorithmic_efficiency/halton.py).
+-   Both implementations above generate a Halton sequence for a given search space (intended to
     implement a shifted, scrambled Halton sequence as recommended in
     https://arxiv.org/abs/1706.03200).
 -   If a quasi-random search algorithm based on a low-discrepancy sequence is
@@ -1770,7 +1776,7 @@ multi-host training can make it very easy to introduce bugs!*
 <br>
 
 <p align="center">
-<img src="assets/have_we_sampled_enough.png" width="49%" alt="A box plot showing the importance of sampling enough">
+<img src="https://raw.githubusercontent.com/google-research/tuning_playbook/main/assets/have_we_sampled_enough.png" width="49%" alt="A box plot showing the importance of sampling enough">
 </p>
 
 <p align="center"><b>Figure 3:</b> A ResNet-50 was tuned on ImageNet with 100
@@ -1802,7 +1808,7 @@ important to fix them before trying other things. Diagnosing and correcting
 training failures is an active area of research.*
 
 <p align="center">
-<img src="assets/stride_instability.png" width="80%" alt="Changing the strides in a single residual block in a WideResnet results in training instability.">
+<img src="https://raw.githubusercontent.com/google-research/tuning_playbook/main/assets/stride_instability.png" width="80%" alt="Changing the strides in a single residual block in a WideResnet results in training instability.">
 </p>
 
 
@@ -1835,7 +1841,7 @@ To check for this, we can train for an abbreviated run of just \~500 steps using
 `lr = 2 * current best`, but evaluate every step.
 
 <p align="center">
-<img src="assets/more_frequent_evals.png" width="80%" alt="Illustration of the value of more frequent evaluations at the start of
+<img src="https://raw.githubusercontent.com/google-research/tuning_playbook/main/assets/more_frequent_evals.png" width="80%" alt="Illustration of the value of more frequent evaluations at the start of
 training.">
 </p>
 
@@ -1855,8 +1861,7 @@ training.">
     architecture (examples below).
     -   Add residual connections and normalization if the model doesn't contain
         it already.
--   Normalization should be the last operation before the residual. E.g. x +
-    Norm(f(x)).
+-   Normalization should be inside the residual. E.g. x + f(Norm(x)).
 -   Norm(x + f(x)) known to cause issues.
 -   Try initializing residual branches to 0 (e.g.
     [ReZero init](https://arxiv.org/abs/2003.04887)).
@@ -1866,7 +1871,7 @@ training.">
 #### Learning rate warmup
 
 <p align="center">
-<img src="assets/instability_during_warmup.png" width="80%" alt="An example of instability during a warmup period (note the horizontal axis log
+<img src="https://raw.githubusercontent.com/google-research/tuning_playbook/main/assets/instability_during_warmup.png" width="80%" alt="An example of instability during a warmup period (note the horizontal axis log
 scale).">
 </p>
 
@@ -1875,13 +1880,13 @@ scale).">
 ##### When to apply learning rate warmup
 
 <p align="center">
-<img src="assets/axis_model_with_instability.png" width="49%" alt="Axis plot for model with instability">
+<img src="https://raw.githubusercontent.com/google-research/tuning_playbook/main/assets/axis_model_with_instability.png" width="49%" alt="Axis plot for model with instability">
 </p>
 
 <p align="center"><b>Figure 7a:</b> An example of a hyperparameter axis plot for a model exhibiting training instability. The best learning rate is at the edge of what is feasible. An "infeasible" trial is defined as one that either produces NaNs or uncharacteristically high values of the loss.</p>
 
 <p align="center">
-<img src="assets/loss_model_with_instability.png" width="49%" alt="Loss curve for model with instability">
+<img src="https://raw.githubusercontent.com/google-research/tuning_playbook/main/assets/loss_model_with_instability.png" width="49%" alt="Loss curve for model with instability">
 </p>
 
 <p align="center"><b>Figure 7b:</b> The training loss of a model trained with a learning rate where we see instability.</p>
@@ -1898,7 +1903,7 @@ scale).">
 ##### How to apply learning rate warmup
 
 <p align="center">
-<img src="assets/beneficial_effect_warmup.png" width="80%" alt="Beneficial effect of warmup on training instabilities">
+<img src="https://raw.githubusercontent.com/google-research/tuning_playbook/main/assets/beneficial_effect_warmup.png" width="80%" alt="Beneficial effect of warmup on training instabilities">
 </p>
 
 <p align="center"><b>Figure 8:</b> Beneficial effect of learning rate warmup on addressing training instabilities.</p>
@@ -1943,7 +1948,7 @@ scale).">
 #### Gradient clipping
 
 <p align="center">
-<img src="assets/gradient_clipping.png" width="80%" alt="Gradient clipping on early training instabilities">
+<img src="https://raw.githubusercontent.com/google-research/tuning_playbook/main/assets/gradient_clipping.png" width="80%" alt="Gradient clipping on early training instabilities">
 </p>
 
 <p align="center"><b>Figure 9:</b> Illustration of gradient clipping correcting early training instability.</p>
@@ -2044,7 +2049,7 @@ $$v_0 = 0$$
 
 $$v_{t+1} = \gamma v_{t} + \nabla \mathcal{l}(\theta_t)$$
 
-$$\theta_{t+1} = \theta_{t} - \eta_t( \gamma v_{t+1} + \nabla \mathcal{l}(\theta_{t})$$
+$$\theta_{t+1} = \theta_{t} - \eta_t( \gamma v_{t+1} + \nabla \mathcal{l}(\theta_{t}))$$
 
 #### RMSProp
 
@@ -2098,7 +2103,7 @@ $$\theta_{t+1} = \theta_{t} - \alpha_t \frac{\beta_1 m_{t+1} + (1 - \beta_1) \na
 @misc{tuningplaybookgithub,
   author = {Varun Godbole and George E. Dahl and Justin Gilmer and Christopher J. Shallue and Zachary Nado},
   title = {Deep Learning Tuning Playbook},
-  url = {http://github.com/google/tuning_playbook},
+  url = {http://github.com/google-research/tuning_playbook},
   year = {2023},
   note = {Version 1.0}
 }
